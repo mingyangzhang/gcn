@@ -111,12 +111,14 @@ def sparse_to_tuple(sparse_mx):
 
 def preprocess_features(features):
     """Row-normalize feature matrix and convert to tuple representation"""
+
+    features = features.toarray()
     rowsum = np.array(features.sum(1))
     r_inv = np.power(rowsum, -1).flatten()
     r_inv[np.isinf(r_inv)] = 0.
-    r_mat_inv = sp.diags(r_inv)
-    features = r_mat_inv.dot(features)
-    return sparse_to_tuple(features)
+    r_mat_inv = np.diag(r_inv)
+    features = np.matmul(r_mat_inv, features)
+    return features
 
 
 def normalize_adj(adj):
@@ -135,14 +137,15 @@ def preprocess_adj(adj):
     return sparse_to_tuple(adj_normalized)
 
 
-def construct_feed_dict(features, support, labels, labels_mask, placeholders):
+def construct_feed_dict(adj, features, support, labels, labels_mask, placeholders):
     """Construct feed dictionary."""
     feed_dict = dict()
+    # feed_dict.update({placeholders['adj']: adj})
     feed_dict.update({placeholders['labels']: labels})
     feed_dict.update({placeholders['labels_mask']: labels_mask})
     feed_dict.update({placeholders['features']: features})
     feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
-    feed_dict.update({placeholders['num_features_nonzero']: features[1].shape})
+    feed_dict.update({placeholders['num_features_nonzero']: 0})
     return feed_dict
 
 

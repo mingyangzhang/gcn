@@ -1,5 +1,5 @@
-from gcn.layers import *
-from gcn.metrics import *
+from layers import *
+from metrics import *
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -144,6 +144,7 @@ class GCN(Model):
         self.build()
 
     def _loss(self):
+
         # Weight decay loss
         for var in self.layers[0].vars.values():
             self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
@@ -163,7 +164,6 @@ class GCN(Model):
                                             placeholders=self.placeholders,
                                             act=tf.nn.relu,
                                             dropout=True,
-                                            sparse_inputs=True,
                                             logging=self.logging))
 
         self.layers.append(GraphConvolution(input_dim=FLAGS.hidden1,
