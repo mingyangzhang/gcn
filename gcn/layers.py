@@ -186,3 +186,54 @@ class GraphConvolution(Layer):
             output += self.vars['bias']
 
         return self.act(output)
+
+class GraphAggregate(Layer):
+    """Graph aggregate layer."""
+
+    def __init__(self, input_dim, output_dim, placeholders, dropout=0.,
+                 act=tf.nn.relu, **kwargs):
+
+        super(GraphAggregate, self).__init__(**kwargs)
+
+        if dropout:
+            self.dropout = placeholders['dropout']
+        else:
+            self.dropout = 0.
+
+        self.neighbors = placeholders['neighbors']
+        self.featureless = featureless
+        self.bias = bias
+        self.act = act
+
+        with tf.variable_scope(self.name + '_vars'):
+            for i in range(len(self.neighbors)):
+                self.vars['weights_' + str(i)] = glorot([input_dim, output_dim], name='weights_' + str(i))
+
+            if self.bias:
+                self.vars['bias'] = zeros([output_dim], name='bias')
+
+        if self.logging:
+            self._log_vars()
+
+    def _call(self, inputs):
+        x = inputs
+
+        # dropout
+        x = tf.nn.dropout(x, 1-self.dropout)
+
+        # aggregate
+        supports = list()
+        for i in range(len(self.neighbors)):
+            if not self.featureless:
+                pre_sup = dot(x, self.vars['weights_' + str(i)])
+            else:
+                pre_sup = self.vars['weights_' + str(i)]
+            support = dot(self.support[i], pre_sup)
+            supports.append(support)
+        output = tf.add_n(supports)
+
+        # bias
+        if self.bias:
+            output += self.vars['bias']
+
+        return self.act(output)
