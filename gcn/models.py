@@ -41,11 +41,11 @@ class Model(object):
             self._build()
 
         # Build sequential layer model
-        self.activations.append(self.inputs)
-        for layer in self.layers:
-            hidden = layer(self.activations[-1])
-            self.activations.append(hidden)
-        self.outputs = self.activations[-1]
+        # self.activations.append(self.inputs)
+        # for layer in self.layers:
+        #     hidden = layer(self.activations[-1])
+        #     self.activations.append(hidden)
+        # self.outputs = self.activations[-1]
 
         # Store model variables for easy access
         variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
@@ -175,3 +175,27 @@ class GCN(Model):
 
     def predict(self):
         return tf.nn.softmax(self.outputs)
+
+
+class HGCN(Model):
+
+    def __init__(self, placeholders, input_dim, **kwargs):
+        super(HGCN, self).__init__(**kwargs)
+
+        self.inputs = placeholders['features']
+        self.input_dim = input_dim
+        # self.input_dim = self.inputs.get_shape().as_list()[1]  # To be supported in future Tensorflow versions
+        self.output_dim = placeholders['labels'].get_shape().as_list()[1]
+        self.placeholders = placeholders
+
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+
+        self.build()
+
+    def _loss(self):
+
+        pass
+
+    def _build(self):
+
+        pass
