@@ -1,5 +1,6 @@
 from layers import *
 from metrics import *
+from components import *
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -179,14 +180,24 @@ class GCN(Model):
 
 class HGCN(Model):
 
-    def __init__(self, placeholders, input_dim, **kwargs):
+    def __init__(self, placeholders, view_num, input_dim, output_dim,
+                 mvgcn_hidden, mvgcn_output_dim, rgcn_hidden, **kwargs):
+
         super(HGCN, self).__init__(**kwargs)
 
         self.inputs = placeholders['features']
         self.input_dim = input_dim
-        # self.input_dim = self.inputs.get_shape().as_list()[1]  # To be supported in future Tensorflow versions
-        self.output_dim = placeholders['labels'].get_shape().as_list()[1]
+
+        self.output_dim = output_dim
         self.placeholders = placeholders
+
+        # settings for  multi-view gcn
+        self.view_num = view_num
+        self.mvgcn_hidden = mvgcn_hidden
+        self.mvgcn_output_dim = mvgcn_output_dim
+
+        # settings for rgcn
+        self.rgcn_hidden = t=rgcn_hidden
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
 
@@ -196,6 +207,20 @@ class HGCN(Model):
 
         pass
 
-    def _build(self):
+    def build(self):
 
-        pass
+        mvgcn = MultiViewGCN(view_num=self.view_num,
+                             input_dim=self.input_dim,
+                             hidden=self.mvgcn_hidden
+                             output_dim=self.mvgcn_output_dim,
+                             placeholders=self.placeholders,
+                             dropout=0.,
+                             sparse_inputs=False,
+                             featureless=False,
+                             logging=self.logging)
+
+        self.mvgcn = mvgcn
+        fused_output = []
+        for x in self.inputs:
+            fused_output.append(self.mvgcn(x))
+        fused_features = tf.concat(fused_output, axis=1)
