@@ -200,13 +200,13 @@ class GraphAggregate(Layer):
         else:
             self.dropout = 0.
 
-        self.neighbors = placeholders['neighbors']
+        self.support = placeholders['support']
         self.featureless = featureless
         self.bias = bias
         self.act = act
 
         with tf.variable_scope(self.name + '_vars'):
-            for i in range(len(self.neighbors)):
+            for i in range(len(self.support)):
                 self.vars['weights_' + str(i)] = glorot([input_dim, output_dim], name='weights_' + str(i))
 
             if self.bias:
@@ -215,22 +215,21 @@ class GraphAggregate(Layer):
         if self.logging:
             self._log_vars()
 
+
     def _call(self, inputs):
-        x = inputs
+
+        features = inputs
 
         # dropout
-        x = tf.nn.dropout(x, 1-self.dropout)
+        if self.sparse_inputs:
+            features = sparse_dropout(features, 1-self.dropout, self.num_features_nonzero)
+        else:
+            features = tf.nn.dropout(features, 1-self.dropout)
 
-        # aggregate
-        supports = list()
-        for i in range(len(self.neighbors)):
-            if not self.featureless:
-                pre_sup = dot(x, self.vars['weights_' + str(i)])
-            else:
-                pre_sup = self.vars['weights_' + str(i)]
-            support = dot(self.support[i], pre_sup)
-            supports.append(support)
-        output = tf.add_n(supports)
+        # convolve
+        weights = tf.concat([self.vars['weights_' + str(i)] for i in range(len(self.support))], axis=0)
+        supports = tf.concat([tf.tensordot(A, features) for A in self.support], axis=1)
+        output = tf.tensordot(supports, weights)
 
         # bias
         if self.bias:
