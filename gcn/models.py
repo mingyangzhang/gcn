@@ -197,7 +197,7 @@ class HGCN(Model):
         self.mvgcn_output_dim = mvgcn_output_dim
 
         # settings for rgcn
-        self.rgcn_hidden = t=rgcn_hidden
+        self.rgcn_hidden = rgcn_hidden
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
 
@@ -205,7 +205,8 @@ class HGCN(Model):
 
     def _loss(self):
 
-        pass
+        adj = self.placeholders["mob_adj"]
+
 
     def build(self):
 
@@ -224,3 +225,21 @@ class HGCN(Model):
         for x in self.inputs:
             fused_output.append(self.mvgcn(x))
         fused_features = tf.concat(fused_output, axis=1)
+
+        self.rgcn_layers = []
+        self.rgcn_activations = [fused_features]
+        self.rgcn_layers.append(GraphAggregate(input_dim=self.mvgcn_output_dim,
+                                               output_dim=self.rgcn_hidden,
+                                               placeholders=self.placeholders,
+                                               dropout=0.,
+                                               logging=self.logging))
+
+        self.rgcn_layers.append(GraphAggregate(input_dim=self.rgcn_hidden,
+                                               output_dim=self.output_dim,
+                                               placeholders=self.placeholders,
+                                               dropout=0.,
+                                               act=lambda x:x,
+                                               logging=self.logging))
+        for rgcn in self.rgcn_layers:
+            self.rgcn_activations.append(rgcn(self.rgcn_activations[-1]))
+        self.output = self.rgcn_activations[-1]
